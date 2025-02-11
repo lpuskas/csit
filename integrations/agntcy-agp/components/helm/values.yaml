@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+
+gateway:
+  image:
+    repository: ghcr.io/agntcy/agp/gw
+    # This sets the pull policy for images.
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "0.1.0-rc0-2-g421c6ce"
+
+  imagePullSecrets:
+      - name: regcred

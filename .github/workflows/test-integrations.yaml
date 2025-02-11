@@ -1,0 +1,72 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+
+name: test-integrations
+on:
+  workflow_dispatch:
+    inputs:
+      destroy-cluster:
+        description: 'Destroy test cluster'
+        required: false
+        default: true
+        type: boolean
+      python-version:
+        description: 'Python version to install'
+        required: false
+        default: '3.12'
+      kind-version:
+        description: 'Kind version'
+        required: false
+        default: '0.24.0'
+
+jobs:
+  run-tests-gateway:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      packages: 'read'
+      attestations: 'read'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+        with:
+          python: true
+          go: false
+
+      - name: Setup K8S Tools
+        uses: ./.github/actions/setup-k8s
+        with:
+          kind-version: ${{ inputs.kind-version }}
+
+      - name: Create kind cluster
+        run: |
+          cd integrations
+          task kind:create
+        shell: bash
+
+      - name: Deploy Phoenix directory
+        run: |
+          cd integrations
+          task test:env:gateway:deploy
+        shell: bash
+
+      - name: Run simple gateway tests
+        run: |
+          cd integrations
+          task test:gateway
+        shell: bash
