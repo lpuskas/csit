@@ -7,17 +7,19 @@ version: '3'
 silent: true
 
 vars:
-  KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "phoenix-test" }}'
+  KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-test" }}'
 
   ## Image config
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
-  GATEWAY_IMAGE_TAG: '{{ .GATEWAY_IMAGE_TAG | default "0.1.0-rc0-2-g421c6ce" }}'
+  GATEWAY_IMAGE_TAG: '{{ .GATEWAY_IMAGE_TAG | default "0.1.0-rc0-10-g794c425" }}'
 
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "--set *.platform=linux/arm64" }}'
-  TEST_APP_TAG: '{{ .TEST_APP_TAG | default "v0.0.0-dev" }}'
+  TEST_APP_TAG: '{{ .TEST_APP_TAG | default "v0.0.1" }}'
 
   AZURE_OPENAI_API_KEY: '{{ .AZURE_OPENAI_API_KEY | default "" }}'
   AZURE_OPENAI_ENDPOINT: '{{ .AZURE_OPENAI_ENDPOINT | default "" }}'
+
+  HELM_NAMESPACE:  '{{ .HELM_NAMESPACE | default "default" }}'
 
 
 tasks:
@@ -30,7 +32,6 @@ tasks:
     cmds:
       - kind create cluster --name {{.KIND_CLUSTER_NAME}} --wait 60s || true
       - kubectl cluster-info --context kind-{{.KIND_CLUSTER_NAME}}
-      - task: kind:load-images
 
   kind:destroy:
     desc: Destroy kind cluster
@@ -38,7 +39,7 @@ tasks:
       - kind delete cluster --name {{.KIND_CLUSTER_NAME}}
 
   kind:load-images:
-    internal: true
+    desc: Pull and load images to kind
     cmds:
       # pull images
       - docker pull {{.IMAGE_REPO}}/agp/gw:{{.GATEWAY_IMAGE_TAG}}
@@ -48,24 +49,24 @@ tasks:
   k8s:port-forward:setup:gateway:
     internal: true
     cmds:
-      - kubectl port-forward svc/agntcy-agp-gateway -n default 46357 &
+      - kubectl port-forward svc/agntcy-agp -n {{ .HELM_NAMESPACE }} 46357 &
       - sleep 1
 
   k8s:port-forward:teardown:gateway:
     internal: true
     cmds:
-      - kill -9 $(ps aux | grep port-forward | grep agntcy-agp-gateway | awk '{print $2}') || true
+      - kill -9 $(ps aux | grep port-forward | grep agntcy-agp | awk '{print $2}') || true
 
   test:env:gateway:deploy:
-    desc: Deploy Phoenix gateway test env
-    vars:
-      HELM_NAMESPACE:  '{{ .HELM_NAMESPACE | default "default" }}'
+    desc: Deploy agent gateway test env
+    deps:
+      - kind:load-images
     cmds:
       - |
         helm dependency build ./agntcy-agp/components/helm
         helm upgrade agntcy-agp \
           ./agntcy-agp/components/helm \
-          --set gateway.image.tag="{{ .GATEWAY_IMAGE_TAG }}" \
+          --set agp.image.tag="{{ .GATEWAY_IMAGE_TAG }}" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -74,9 +75,7 @@ tasks:
           --timeout "15m"
 
   test:env:gateway:cleanup:
-    desc: Remove Phoenix gateway test env
-    vars:
-      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "default" }}'
+    desc: Remove agent gateway test env
     cmds:
       - helm delete --namespace {{ .HELM_NAMESPACE }} agntcy-agp
 
@@ -84,7 +83,7 @@ tasks:
     desc: Build agentic containers
     dir: ./agntcy-agp/agentic-apps
     cmds:
-      - docker buildx bake {{ .IMAGE_BAKE_OPTS }} --load
+      - IMAGE_TAG={{ .TEST_APP_TAG }} docker buildx bake {{ .IMAGE_BAKE_OPTS }} --load
 
   test:autogen-agent:run:
     internal: true
@@ -125,6 +124,7 @@ tasks:
       - defer: { task: k8s:port-forward:teardown:gateway }
       - task: test:autogen-agent:run
       - defer: { task: test:autogen-agent:remove }
+      - docker pull {{ .IMAGE_REPO }}/csit/test-langchain-agent:{{ .TEST_APP_TAG }}
       - IMAGE_REPO={{.IMAGE_REPO}} TEST_APP_TAG={{.TEST_APP_TAG}} go test ./agntcy-agp/tests -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 30m -timeout 30m -ginkgo.v
 
   version:
