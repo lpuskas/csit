@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 apiVersion: v2
-name: agent-gateway
+name: agntcy-dir
 description: A Helm chart for Kubernetes
 
 # A chart can be either an 'application' or a 'library' chart.
@@ -27,6 +27,6 @@ version: 0.1.0
 appVersion: "0.1.0"
 
 dependencies:
-  - name: agp
-    version: "v0.0.1"
-    repository: oci://ghcr.io/agntcy/agp/helm
+  - name: dir
+    version: "v0.1.2"
+    repository: oci://ghcr.io/agntcy/dir/helm-charts
