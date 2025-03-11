@@ -2,14 +2,10 @@
 # SPDX-License-Identifier: MIT
 
 
-import json
-import os
-import sys
 import time
 from os import environ
 
 from crewai import LLM, Agent, Crew, Process, Task
-from crewai.crews import CrewOutput
 from crewai.project import (
     CrewBase,
     after_kickoff,
@@ -19,7 +15,10 @@ from crewai.project import (
     task,
 )
 
-from .utils.evaluator import CrewEvaluator
+try:
+    from utils.evaluator import CrewEvaluator
+except ImportError:
+    from .utils.evaluator import CrewEvaluator
 
 # Uncomment the following line to use an example of a custom tool
 # from simple.tools.custom_tool import MyCustomTool
@@ -35,16 +34,17 @@ class Simple:
     agents_config = "config/agents.yaml"
     tasks_config = "config/tasks.yaml"
 
+    logs = {}
+
     if environ.get("AZURE_OPENAI_API_KEY") is not None:
         print("Using Azure OpenAI")
         llm = LLM(
             model=environ.get("AZURE_MODEL", "gpt-4o-mini"),
             base_url=environ.get("AZURE_OPENAI_ENDPOINT"),
-            api_version=environ.get(
-                "AZURE_OPENAI_API_VERSION", "2025-02-01-preview"
-            ),
+            api_version=environ.get("AZURE_OPENAI_API_VERSION", "2025-02-01-preview"),
             api_key=environ.get("AZURE_OPENAI_API_KEY"),
             azure=True,
+            temperature=0,
         )
     elif environ.get("CISCO_COGNIT_OPENAI_API_KEY") is not None:
         print("Using Cisco Cognit OpenAI")
@@ -58,9 +58,7 @@ class Simple:
         print("Using Ollama")
         llm = LLM(
             model=environ.get("LOCAL_MODEL_NAME", "ollama/llama3.1"),
-            base_url=environ.get(
-                "LOCAL_MODEL_BASE_URL", "http://localhost:11434"
-            ),
+            base_url=environ.get("LOCAL_MODEL_BASE_URL", "http://localhost:11434"),
         )
 
     evaluator = CrewEvaluator(llm)
@@ -103,6 +101,8 @@ class Simple:
         print(f"Task scores: {self.task_score_map}")
         print("=" * 40)
 
+        self.logs = {"output": output}
+
         return output
 
     @agent
@@ -130,9 +130,7 @@ class Simple:
 
     @task
     def reporting_task(self) -> Task:
-        return Task(
-            config=self.tasks_config["reporting_task"], output_file="report.md"
-        )
+        return Task(config=self.tasks_config["reporting_task"], output_file="report.md")
 
     def task_callback(self, task_output):
         # Find task
@@ -147,9 +145,7 @@ class Simple:
             task, task_output
         )
 
-        print(
-            f"Task {task_output.name} finished with agent: {task_output.agent}"
-        )
+        print(f"Task {task_output.name} finished with agent: {task_output.agent}")
         return
 
     @crew
