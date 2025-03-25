@@ -2,19 +2,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # The builder image, used to build the virtual environment
-FROM python:3.12.5-bookworm AS builder
+FROM python:3.13.2-bookworm AS builder
 
-RUN pip install uv==0.5.1
+RUN pip install poetry
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml poetry.lock ./
 RUN touch README.md
 
-RUN uv sync --no-dev
+RUN poetry config virtualenvs.in-project true
+RUN poetry sync --no-root
 
 # # The runtime image, used to just run the code provided its virtual environment
-FROM python:3.12.5-slim-bookworm AS base
+FROM python:3.13.2-slim-bookworm AS base
 
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"

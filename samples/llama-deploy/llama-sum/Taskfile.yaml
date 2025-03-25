@@ -11,7 +11,7 @@ tasks:
     desc: Install dependencies
     dir: '{{.USER_WORKING_DIR}}'
     cmds:
-      - poetry install
+      - poetry install --no-root
 
   stack:up:
     desc: Deploy all app components as indipendend processes
