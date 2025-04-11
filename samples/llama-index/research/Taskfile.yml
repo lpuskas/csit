@@ -10,22 +10,15 @@ tasks:
   dependencies:
     internal: true
     desc: Install dependencies
-    dir: '{{.USER_WORKING_DIR}}'
     cmds:
       - poetry install --no-root
 
-  run:crew:
-    desc: Run crew
-    dir: '{{.USER_WORKING_DIR}}'
-    deps:
-      - dependencies
-    cmds:
-      - poetry run python -m simple_crew.main
-
   run:test:
-    desc: Run crew
-    dir: '{{.USER_WORKING_DIR}}'
+    desc: Run tests
     deps:
       - dependencies
     cmds:
-      - poetry run python -m simple_crew.main test
+      - poetry run python -m research.main
+
+  default:
+    cmd: task -l
