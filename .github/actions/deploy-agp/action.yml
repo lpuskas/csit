@@ -1,0 +1,51 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+---
+name: Deploy agntcy components
+description: Deploy agntcy components for integration testing
+inputs:
+  gateway-image-tag:
+    description: 'Set gateway container image version'
+    required: false
+    default: ''
+  gateway-chart-tag:
+    description: 'Set gateway chart version'
+    required: false
+    default: ''
+  kind-cluster-name:
+    description: 'Set kind cluster name where components are deployed'
+    required: false
+    default: 'agntcy-test'
+  kind-cluster-namespace:
+    description: 'Set cluster namespace where components are deployed'
+    required: false
+    default: 'default'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create Kind Cluster
+      uses: helm/kind-action@v1
+      with:
+        cluster_name: agntcy-test
+        wait: 300s
+
+    - name: deploy agntcy-agp
+      shell: bash
+      env:
+        GATEWAY_IMAGE_TAG: ${{ inputs.gateway-image-tag }}
+        GATEWAY_CHART_TAG: ${{ inputs.gateway-chart-tag }}
+        KIND_CLUSTER_NAME: ${{ inputs.kind-cluster-name }}
+        KIND_CLUSTER_NAMESPACE: ${{ inputs.kind-cluster-namespace }}
+      run: |
+        kubectl config use-context kind-$KIND_CLUSTER_NAME
+        helm upgrade agntcy-agp oci://ghcr.io/agntcy/agp/helm/agp \
+          --version $GATEWAY_CHART_TAG \
+          --set image.tag="${GATEWAY_IMAGE_TAG}" \
+          --namespace $KIND_CLUSTER_NAMESPACE \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
