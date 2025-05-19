@@ -54,7 +54,7 @@ tasks:
       - task: parent:kind:create
       - cmd: echo "Setting up directory..."
       - task: parent:directory:test-env:deploy
-          - task: parent:directory:download:dirctl-bin
+      - task: parent:directory:download:dirctl-bin
       - task: wfsm:download:wfsm-bin
 
   wfsm:test:teardown:
@@ -93,13 +93,13 @@ tasks:
   wfsm:dir:push:manifest:
     desc: "Pushes the agent manifest to the directory"
     vars:
-      MANIFEST_PATH: '{{ .MANIFEST_PATH | default "/Users/lpuskas/prj/lpuskas/csit/integrations/agntcy-wfsm/assets/manifest.json" }}'
+      MANIFEST_PATH: '{{ .MANIFEST_PATH | default "./assets/echo_agent.json" }}'
       TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
 
     cmds:
       - task: parent:directory:k8s:port-forward:setup
       - defer: { task: parent:directory:k8s:port-forward:teardown }
-      - echo "Pushing the agent manifest to the directory"
+      - echo "Pushing the agent manifest to the directory "
       - 'cp -R {{ .MANIFEST_PATH }} "{{ .TMP_PATH}}/manifest.json"'
       - '{{ .DIRCTL_BIN_PATH}}/dirctl push {{ .MANIFEST_PATH}} > "{{ .TMP_PATH}}/digest.json"'
 
@@ -115,7 +115,7 @@ tasks:
       - echo "Current TMP_PATH is {{ .TMP_PATH }}"
       - task: parent:directory:k8s:port-forward:setup
       - defer: { task: parent:directory:k8s:port-forward:teardown }
-      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json) --platform=k8s"'
+      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" -platform=k8s'
 
 
   wfsm:check:agent:
