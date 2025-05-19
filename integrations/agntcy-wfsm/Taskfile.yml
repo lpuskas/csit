@@ -71,28 +71,13 @@ tasks:
       cmd: echo "Downloading wfsm binary"
       TEMP_PATH: '{{ .TEMP_PATH | default "/tmp" }}'
       WFSM_BIN_PATH: '{{ .TEMP_PATH | default "/tmp" }}'
-      WFSM_BIN_VERSION: '0.2.2'
+      WFSM_BIN_VERSION: 'v0.2.2'
     cmds:
       - |
-        echo "Current WFSM_BIN_PATH is {{.WFSM_BIN_PATH}}"
-        echo "Current WFSM_BIN_VERSION is {{.WFSM_BIN_VERSION}}"
-        if [[ "{{.ARCH}}" == "x86_64" && "{{.OS}}" == "Linux" ]]; then
-          ARCH="amd64"
-        fi
-        echo "Compatible ARCH is {{.ARCH}}"
-        echo "Current OS is {{.OS}}"
-        
-        URL="https://github.com/agntcy/workflow-srv-mgr/releases/download/v{{.WFSM_BIN_VERSION}}/wfsm{{.WFSM_BIN_VERSION}}_{{.OS}}_{{.ARCH}}.tar.gz"
-        echo "Downloading from $URL"
-        echo "Working directory is {{.WFSM_BIN_PATH}}"
-        if ! curl --fail --show-error --create-dirs --location $URL --output "{{.WFSM_BIN_PATH}}/wfsm.tar.gz"; then
-          echo "ARCH or OS not supported"
-          exit 1
-        fi
-        echo "Extracting wfsm binary in {{.WFSM_BIN_PATH}}"
-        tar -xzf "{{.WFSM_BIN_PATH}}/wfsm.tar.gz" -C "{{.WFSM_BIN_PATH}}"
-        rm "{{.WFSM_BIN_PATH}}/wfsm.tar.gz"
-        chmod +x "{{.WFSM_BIN_PATH}}/wfsm"
+        export WFSM_TAG={{.WFSM_BIN_VERSION}}
+        export WFSM_TARGET={{.WFSM_BIN_PATH}};
+        curl -L https://raw.githubusercontent.com/agntcy/workflow-srv-mgr/refs/heads/main/install.sh | bash
+
 
   wfsm:dir:push:manifest:
     desc: "Pushes the agent manifest to the directory"
