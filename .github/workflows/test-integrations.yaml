@@ -192,3 +192,27 @@ jobs:
           TEST_ENV_VAR: "anything"
         run: task integrations:apps:run-marketing-campaign
         shell: bash
+
+  run-tests-wfsm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-env
+        with:
+          python: true
+          go: true
+
+      - name: Run Workflow Server Manger Test
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          TEST_ENV_VAR: "anything"
+        run: task -d integrations/agntcy-wfsm wfsm:test:e2e
+        shell: bash
