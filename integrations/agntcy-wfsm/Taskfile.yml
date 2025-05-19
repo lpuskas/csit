@@ -54,9 +54,7 @@ tasks:
       - task: parent:kind:create
       - cmd: echo "Setting up directory..."
       - task: parent:directory:test-env:deploy
-      - cmd: sleep 5
-      - task: parent:directory:k8s:port-forward:setup
-      - task: parent:directory:download:dirctl-bin
+          - task: parent:directory:download:dirctl-bin
       - task: wfsm:download:wfsm-bin
 
   wfsm:test:teardown:
@@ -68,7 +66,7 @@ tasks:
       - task: parent:kind:destroy
 
   wfsm:download:wfsm-bin:
-    desc: Download the wfsm tool binary from GitHub releases
+    desc: Downloads the wfsm tool binary from GitHub releases
     vars:
       cmd: echo "Downloading wfsm binary"
       TEMP_PATH: '{{ .TEMP_PATH | default "/tmp" }}'
@@ -92,8 +90,6 @@ tasks:
         rm "{{.WFSM_BIN_PATH}}/wfsm.tar.gz"
         chmod +x "{{.WFSM_BIN_PATH}}/wfsm"
 
-
-
   wfsm:dir:push:manifest:
     desc: "Pushes the agent manifest to the directory"
     vars:
@@ -102,7 +98,7 @@ tasks:
 
     cmds:
       - task: parent:directory:k8s:port-forward:setup
-      - defer: {task: parent:directory:k8s:port-forward:teardown}
+      - defer: { task: parent:directory:k8s:port-forward:teardown }
       - echo "Pushing the agent manifest to the directory"
       - 'cp -R {{ .MANIFEST_PATH }} "{{ .TMP_PATH}}/manifest.json"'
       - '{{ .DIRCTL_BIN_PATH}}/dirctl push {{ .MANIFEST_PATH}} > "{{ .TMP_PATH}}/digest.json"'
@@ -116,18 +112,17 @@ tasks:
       AZURE_OPENAI_API_VERSION: '{{ .AZURE_OPENAI_API_VERSION | default "2025-02-01-preview" }}'
 
     cmds:
-      - echo Current TMP_PATH is {{ .TMP_PATH }}
-      - echo Current AZURE_OPENAI_API_KEY is {{ .AZURE_OPENAI_API_KEY }}
+      - echo "Current TMP_PATH is {{ .TMP_PATH }}"
       - task: parent:directory:k8s:port-forward:setup
       - defer: { task: parent:directory:k8s:port-forward:teardown }
-      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)"'
+      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json) --platform=k8s"'
 
 
   wfsm:check:agent:
     desc: Checks the agent status
     cmds:
       - echo "Checking the agent ACP Workflow Server"
-      - curl -s -X GET http://localhost:8080/healthz | jq .status
+      - TODO curl -s -X GET http://localhost:8080/healthz | jq .status
 
   wfsm:test:e2e:
     desc: Tests the wfsm deploy command using an agent manifest from the directory
