@@ -76,11 +76,9 @@ tasks:
       - |
         echo "Current WFSM_BIN_PATH is {{.WFSM_BIN_PATH}}"
         echo "Current WFSM_BIN_VERSION is {{.WFSM_BIN_VERSION}}"
-        if [ ! -d "{{.ARCH}}" == "x86_64"]; then
-          echo "ARCH is x86_64"
+        if [[ "{{.ARCH}}" == "x86_64" && "{{.OS}}" == "Linux" ]]; then
           ARCH="amd64"
         fi
-        
         echo "Compatible ARCH is {{.ARCH}}"
         echo "Current OS is {{.OS}}"
         
