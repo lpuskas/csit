@@ -76,8 +76,14 @@ tasks:
       - |
         echo "Current WFSM_BIN_PATH is {{.WFSM_BIN_PATH}}"
         echo "Current WFSM_BIN_VERSION is {{.WFSM_BIN_VERSION}}"
-        echo "Current ARCH is {{.ARCH}}"
+        if [ ! -d "{{.ARCH}}" == "x86_64"]; then
+          echo "ARCH is x86_64"
+          ARCH="amd64"
+        fi
+        
+        echo "Compatible ARCH is {{.ARCH}}"
         echo "Current OS is {{.OS}}"
+        
         URL="https://github.com/agntcy/workflow-srv-mgr/releases/download/v{{.WFSM_BIN_VERSION}}/wfsm{{.WFSM_BIN_VERSION}}_{{.OS}}_{{.ARCH}}.tar.gz"
         echo "Downloading from $URL"
         echo "Working directory is {{.WFSM_BIN_PATH}}"
