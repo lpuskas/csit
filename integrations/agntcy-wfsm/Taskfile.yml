@@ -71,7 +71,7 @@ tasks:
       cmd: echo "Downloading wfsm binary"
       TEMP_PATH: '{{ .TEMP_PATH | default "/tmp" }}'
       WFSM_BIN_PATH: '{{ .TEMP_PATH | default "/tmp" }}'
-      WFSM_BIN_VERSION: '0.2.1'
+      WFSM_BIN_VERSION: '0.2.2'
     cmds:
       - |
         echo "Current WFSM_BIN_PATH is {{.WFSM_BIN_PATH}}"
@@ -115,7 +115,7 @@ tasks:
       - echo "Current TMP_PATH is {{ .TMP_PATH }}"
       - task: parent:directory:k8s:port-forward:setup
       - defer: { task: parent:directory:k8s:port-forward:teardown }
-      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" -platform=k8s'
+      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --platform=k8s'
 
 
   wfsm:check:agent:
