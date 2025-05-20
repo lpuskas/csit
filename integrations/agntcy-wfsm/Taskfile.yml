@@ -104,7 +104,7 @@ tasks:
       - echo "Current TMP_PATH is {{ .TMP_PATH }}"
       - task: parent:directory:k8s:port-forward:setup
       - defer: { task: parent:directory:k8s:port-forward:teardown }
-      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --platform=k8s'
+      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --dryRun=false'
 
 
   wfsm:check:agent:
