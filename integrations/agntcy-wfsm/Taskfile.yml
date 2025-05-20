@@ -55,7 +55,7 @@ tasks:
           if [[ "{{ .ARCH}}" == "x86_64" && "{{lower .OS}}" == "linux" ]]; then
             echo 'yq_{{ lower .OS }}_amd64'
           else
-            'yq_{{ lower .OS }}_{{ .ARCH}}'
+            echo 'yq_{{ lower .OS }}_{{ .ARCH}}'
           fi
         
     cmds:
