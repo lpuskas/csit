@@ -54,6 +54,7 @@ tasks:
 
     cmds:
       - cmd: echo "Installing yq ..."
+      - cmd: Install command > 'curl -L -o "{{ .TMP_PATH}}/yq" "https://github.com/mikefarah/yq/releases/download/{{.YQ_VERSION}}/{{ .YQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/yq"'
       - cmd: 'curl -L -o "{{ .TMP_PATH}}/yq" "https://github.com/mikefarah/yq/releases/download/{{.YQ_VERSION}}/{{ .YQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/yq"'
 
   wfsm:install:jq:
@@ -72,6 +73,7 @@ tasks:
 
     cmds:
       - cmd: echo "Installing jq"
+      - cmd: echo Install command > 'curl -L -o "{{ .TMP_PATH}}/jq" "https://github.com/jqlang/jq/releases/download/{{ .JQ_VERSION }}/{{ .JQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/jq"'
       - cmd: 'curl -L -o "{{ .TMP_PATH}}/jq" "https://github.com/jqlang/jq/releases/download/{{ .JQ_VERSION }}/{{ .JQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/jq"'
 
 
