@@ -45,6 +45,35 @@ includes:
       DIRCTL_BIN_VERSION: '{{ .DIRCTL_BIN_VERSION }}'
 
 tasks:
+  wfsm:install:yq:
+    desc: Installs the yq tool
+    vars:
+      TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
+      YQ_VERSION: 'v4.45.4'
+      YQ_BINARY: 'yq_{{ lower .OS }}_{{ .ARCH}}'
+
+    cmds:
+      - cmd: echo "Installing yq ..."
+      - cmd: 'curl -L -o "{{ .TMP_PATH}}/yq" "https://github.com/mikefarah/yq/releases/download/{{.YQ_VERSION}}/{{ .YQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/yq"'
+
+  wfsm:install:jq:
+    desc: Installs the jq tool
+    vars:
+      TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
+      JQ_VERSION: 'jq-1.7.1'
+
+      JQ_BINARY:
+        sh: |
+          if [[ "$ARCH" == "arm64" && "$OS" == "Darwin" ]]; then
+            echo 'jq-macos-{{ .ARCH}}'
+          else
+            echo 'jq-{{ .OS}}-{{ .ARCH}}'
+          fi
+
+    cmds:
+      - cmd: echo "Installing jq"
+      - cmd: 'curl -L -o "{{ .TMP_PATH}}/jq" "https://github.com/jqlang/jq/releases/download/{{ .JQ_VERSION }}/{{ .JQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/jq"'
+
 
   wfsm:test:setup:
     desc: Sets up prerequisites for testing the wfsm
@@ -55,7 +84,9 @@ tasks:
       - cmd: echo "Setting up directory..."
       - task: parent:directory:test-env:deploy
       - task: parent:directory:download:dirctl-bin
-      - task: wfsm:download:wfsm-bin
+      - task: wfsm:install:wfsm-bin
+      - task: wfsm:install:yq
+      - task: wfsm:install:jq
 
   wfsm:test:teardown:
     desc: Cleans up after testing the wfsm
@@ -65,7 +96,7 @@ tasks:
       - task: parent:directory:k8s:port-forward:teardown
       - task: parent:kind:destroy
 
-  wfsm:download:wfsm-bin:
+  wfsm:install:wfsm-bin:
     desc: Downloads the wfsm tool binary from GitHub releases
     vars:
       cmd: echo "Downloading wfsm binary"
@@ -104,14 +135,55 @@ tasks:
       - echo "Current TMP_PATH is {{ .TMP_PATH }}"
       - task: parent:directory:k8s:port-forward:setup
       - defer: { task: parent:directory:k8s:port-forward:teardown }
-      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --dryRun=false'
+      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --dryRun=false --platform=k8s &'
+      - sleep 1
 
 
-  wfsm:check:agent:
-    desc: Checks the agent status
+
+  wfsm:call:acp:
+    desc: Calls the ACP API
+    vars:
+      TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
+
+      AGENT_NAME:
+        sh: |
+          {{ .TMP_PATH }}/jq 'first(.extensions[]).name' {{ .TMP_PATH }}/manifest.json
+      AGENT_ID:
+        sh: |
+          "{{ .TMP_PATH }}/yq" e '.agents[0].env[] | select(.name=="AGENT_ID").value' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
+      API_HOST:
+        sh: |
+          "{{ .TMP_PATH }}/yq" e '.agents[0].env[] | select(.name=="API_HOST").value' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
+      API_PORT:
+        sh: |
+          "{{ .TMP_PATH }}/yq" e '.agents[0].env[] | select(.name=="API_PORT").value' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
+      API_KEY:
+        sh: |
+          "{{ .TMP_PATH }}/yq" e '.agents[0].secretEnvs[] | select(.name=="API_KEY").value' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
+      AGENT_REPO:
+        sh: |
+          "{{ .TMP_PATH }}/yq" e '.agents[0].image.repository' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
+      AGENT_TAG:
+        sh: |
+          "{{ .TMP_PATH }}/yq" e '.agents[0].image.tag' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
+
     cmds:
-      - echo "Checking the agent ACP Workflow Server"
-      - TODO curl -s -X GET http://localhost:8080/healthz | jq .status
+      - cmd: echo "/tmp/yq" e '.agents[0].env[] | select(.name=="AGENT_ID").value' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
+      - cmd: echo "Calling the ACP API"
+      - cmd: echo Agent Name is {{ .AGENT_NAME }}
+      - cmd: echo "AGENT_ID is {{ .AGENT_ID }}"
+      - cmd: echo "API_HOST is {{ .API_HOST }}"
+      - cmd: echo "API_PORT is {{ .API_PORT }}"
+      - cmd: echo "API_KEY is {{ .API_KEY }}"
+      - cmd: echo "AGENT_REPO is {{ .AGENT_REPO }}"
+      - cmd: echo "AGENT_TAG is {{ .AGENT_TAG }}"
+      - cmd: kind load docker-image {{ .AGENT_REPO }}:{{ .AGENT_TAG}} --name {{ .KIND_CLUSTER_NAME }}
+      - cmd: sleep 20
+      - cmd: kubectl port-forward svc/echo-agent  {{ .API_PORT }} &
+      - cmd: sleep 3
+      - cmd: 'curl -X GET "http://localhost:{{ .API_PORT }}/agents/{{ .AGENT_ID }}" -H "accept: application/json" -H "x-api-key: {{ .API_KEY }}"'
+
+
 
   wfsm:test:e2e:
     desc: Tests the wfsm deploy command using an agent manifest from the directory
@@ -119,7 +191,7 @@ tasks:
     cmds:
       - task: wfsm:dir:push:manifest
       - task: wfsm:deploy:manifest
-      - task: wfsm:check:agent
+      - task: wfsm:call:acp
       - defer: { task: wfsm:test:teardown }
 
   default:
