@@ -50,8 +50,14 @@ tasks:
     vars:
       TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
       YQ_VERSION: 'v4.45.4'
-      YQ_BINARY: 'yq_{{ lower .OS }}_{{ .ARCH}}'
-
+      YQ_BINARY:
+        sh: |
+          if [[ "$ARCH" == "x86_64" && "$OS" == "Linux" ]]; then
+            echo ''yq_{{ lower .OS }}_amd64}}''
+          else
+            'yq_{{ lower .OS }}_{{ .ARCH}}'
+          fi
+        
     cmds:
       - echo "Installing yq ..."
       - curl -vvv -L -o "{{ .TMP_PATH}}/yq" "https://github.com/mikefarah/yq/releases/download/{{.YQ_VERSION}}/{{ .YQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/yq"
@@ -67,7 +73,7 @@ tasks:
           if [[ "$ARCH" == "arm64" && "$OS" == "Darwin" ]]; then
             echo 'jq-macos-{{ .ARCH}}'
           else
-            echo 'jq-{{ .OS}}-{{ .ARCH}}'
+            echo 'jq-{{ lower .OS}}-{{ .ARCH}}'
           fi
 
     cmds:
