@@ -70,8 +70,10 @@ tasks:
 
       JQ_BINARY:
         sh: |
-          if [[ "$ARCH" == "arm64" && "$OS" == "Darwin" ]]; then
+          if [[ "{{ .ARCH}}" == "arm64" && "{{lower .OS}}" == "darwin" ]]; then
             echo 'jq-macos-{{ .ARCH}}'
+          elif [[ "{{ .ARCH}}" == "x86_64" && "{{lower .OS}}" == "linux" ]]; then
+            echo `jq-{{ lower .OS}}-amd64`
           else
             echo 'jq-{{ lower .OS}}-{{ .ARCH}}'
           fi
