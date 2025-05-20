@@ -54,7 +54,7 @@ tasks:
 
     cmds:
       - echo "Installing yq ..."
-      - curl -L -o "{{ .TMP_PATH}}/yq" "https://github.com/mikefarah/yq/releases/download/{{.YQ_VERSION}}/{{ .YQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/yq"
+      - curl -vvv -L -o "{{ .TMP_PATH}}/yq" "https://github.com/mikefarah/yq/releases/download/{{.YQ_VERSION}}/{{ .YQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/yq"
 
   wfsm:install:jq:
     desc: Installs the jq tool
@@ -72,7 +72,7 @@ tasks:
 
     cmds:
       - echo "Installing jq"
-      - curl -L -o "{{ .TMP_PATH}}/jq" "https://github.com/jqlang/jq/releases/download/{{ .JQ_VERSION }}/{{ .JQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/jq"
+      - curl -vvv -L -o "{{ .TMP_PATH}}/jq" "https://github.com/jqlang/jq/releases/download/{{ .JQ_VERSION }}/{{ .JQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/jq"
 
 
   wfsm:test:setup:
@@ -90,8 +90,17 @@ tasks:
 
   wfsm:test:teardown:
     desc: Cleans up after testing the wfsm
+    vars:
+      TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
+
     cmds:
       - cmd: echo "Cleaning up wfsm test environment"
+      - cmd: rm -rf "{{ .TMP_PATH}}/manifest.json"
+      - cmd: rm -rf "{{ .TMP_PATH}}/digest.json"
+      - cmd: rm -rf "{{ .TMP_PATH}}/wfsm"
+      - cmd: rm -rf "{{ .TMP_PATH}}/yq"
+      - cmd: rm -rf "{{ .TMP_PATH}}/jq"
+      - cmd: rm -rf "{{ .TMP_PATH}}/dirctl"
       - task: parent:directory:test-env:cleanup
       - task: parent:directory:k8s:port-forward:teardown
       - task: parent:kind:destroy
@@ -130,7 +139,6 @@ tasks:
       AZURE_OPENAI_API_VERSION: '{{ .AZURE_OPENAI_API_VERSION | default "2025-02-01-preview" }}'
 
     cmds:
-      - echo "Current TMP_PATH is {{ .TMP_PATH }}"
       - task: parent:directory:k8s:port-forward:setup
       - defer: { task: parent:directory:k8s:port-forward:teardown }
       - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --dryRun=false --platform=k8s &'
@@ -166,7 +174,6 @@ tasks:
           "{{ .TMP_PATH }}/yq" e '.agents[0].image.tag' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
 
     cmds:
-      - cmd: echo "/tmp/yq" e '.agents[0].env[] | select(.name=="AGENT_ID").value' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
       - cmd: echo "Calling the ACP API"
       - cmd: echo Agent Name is {{ .AGENT_NAME }}
       - cmd: echo "AGENT_ID is {{ .AGENT_ID }}"
@@ -175,11 +182,12 @@ tasks:
       - cmd: echo "API_KEY is {{ .API_KEY }}"
       - cmd: echo "AGENT_REPO is {{ .AGENT_REPO }}"
       - cmd: echo "AGENT_TAG is {{ .AGENT_TAG }}"
-      - cmd: kind load docker-image {{ .AGENT_REPO }}:{{ .AGENT_TAG}} --name {{ .KIND_CLUSTER_NAME }}
-      - cmd: sleep 20
-      - cmd: kubectl port-forward svc/echo-agent  {{ .API_PORT }} &
-      - cmd: sleep 3
-      - cmd: 'curl -X GET "http://localhost:{{ .API_PORT }}/agents/{{ .AGENT_ID }}" -H "accept: application/json" -H "x-api-key: {{ .API_KEY }}"'
+      - |
+        kind load docker-image {{ .AGENT_REPO }}:{{ .AGENT_TAG}} --name {{ .KIND_CLUSTER_NAME }}
+        sleep 90
+        kubectl port-forward svc/echo-agent  {{ .API_PORT }} &
+        sleep 3
+        curl -X GET "http://localhost:{{ .API_PORT }}/agents/{{ .AGENT_ID }}" -H "accept: application/json" -H "x-api-key: {{ .API_KEY }}"
 
 
 
