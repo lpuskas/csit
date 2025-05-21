@@ -153,7 +153,7 @@ tasks:
     cmds:
       - task: parent:directory:k8s:port-forward:setup
       - defer: { task: parent:directory:k8s:port-forward:teardown }
-      - cmd: sleep 5
+      - cmd: sleep 10
       - echo "Pushing the agent manifest to the directory "
       - 'cp -R {{ .MANIFEST_PATH }} "{{ .TMP_PATH}}/manifest.json"'
       - '{{ .DIRCTL_BIN_PATH}}/dirctl push {{ .MANIFEST_PATH}} > "{{ .TMP_PATH}}/digest.json"'
@@ -180,6 +180,7 @@ tasks:
         - WFSM_BIN_PATH
 
     cmds:
+      - echo "Starting the agent ..."
       - task: parent:directory:k8s:port-forward:setup
       - defer: { task: parent:directory:k8s:port-forward:teardown }
       - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --platform=k8s --dryRun=false &'
@@ -247,6 +248,7 @@ tasks:
   wfsm:call:acp:
     desc: Calls the ACP API
     cmds:
+      - echo "Calling the ACP API to get the agent details"
       - |
         eval $(task wfsm:set:acp:env)
         kubectl port-forward svc/echo-agent  "${API_PORT}" &
