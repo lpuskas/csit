@@ -194,6 +194,7 @@ jobs:
         shell: bash
 
   run-tests-wfsm:
+    needs: [ set-kind-version ]
     runs-on: ubuntu-latest
 
     steps:
