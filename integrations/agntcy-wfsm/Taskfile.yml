@@ -11,6 +11,8 @@ vars:
   AZURE_OPENAI_ENDPOINT: '{{ .AZURE_OPENAI_ENDPOINT | default "" }}'
   AZURE_OPENAI_API_VERSION: '{{ .AZURE_OPENAI_API_VERSION | default "2025-02-01-preview" }}'
 
+  TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
+
   ARCH:
     sh: |
       if [ "$ARCH" == "" ]; then
@@ -47,8 +49,12 @@ includes:
 tasks:
   wfsm:install:yq:
     desc: Installs the yq tool
+    requires:
+      vars:
+        - TMP_PATH
+        - ARCH
+        - OS
     vars:
-      TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
       YQ_VERSION: 'v4.45.4'
       YQ_BINARY:
         sh: |
@@ -57,15 +63,19 @@ tasks:
           else
             echo 'yq_{{ lower .OS }}_{{ .ARCH}}'
           fi
-        
+
     cmds:
       - echo "Installing yq ..."
       - curl -L -o "{{ .TMP_PATH}}/yq" "https://github.com/mikefarah/yq/releases/download/{{.YQ_VERSION}}/{{ .YQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/yq"
 
   wfsm:install:jq:
     desc: Installs the jq tool
+    requires:
+      vars:
+        - TMP_PATH
+        - ARCH
+        - OS
     vars:
-      TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
       JQ_VERSION: 'jq-1.7.1'
 
       JQ_BINARY:
@@ -115,8 +125,12 @@ tasks:
 
   wfsm:install:wfsm-bin:
     desc: Downloads the wfsm tool binary from GitHub releases
+    requires:
+      vars:
+        - TMP_PATH
+        - ARCH
+        - OS
     vars:
-      TEMP_PATH: '{{ .TEMP_PATH | default "/tmp" }}'
       WFSM_BIN_PATH: '{{ .TEMP_PATH | default "/tmp" }}'
       WFSM_BIN_VERSION: 'v0.2.2'
     cmds:
@@ -127,9 +141,14 @@ tasks:
 
   wfsm:dir:push:manifest:
     desc: "Pushes the agent manifest to the directory"
+    requires:
+      vars:
+        - TMP_PATH
+        - DIRCTL_BIN_PATH
+        - MANIFEST_PATH
+
     vars:
       MANIFEST_PATH: '{{ .MANIFEST_PATH | default "./assets/echo_agent.json" }}'
-      TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
 
     cmds:
       - task: parent:directory:k8s:port-forward:setup
@@ -139,8 +158,9 @@ tasks:
       - '{{ .DIRCTL_BIN_PATH}}/dirctl push {{ .MANIFEST_PATH}} > "{{ .TMP_PATH}}/digest.json"'
 
   wfsm:deploy:manifest:
-    vars:
-      TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
+    requires:
+      vars:
+        - TMP_PATH
     env:
       AZURE_OPENAI_API_KEY: '{{ .AZURE_OPENAI_API_KEY | default "xxx" }}'
       AZURE_OPENAI_ENDPOINT: '{{ .AZURE_OPENAI_ENDPOINT | default "yyy" }}'
@@ -149,17 +169,28 @@ tasks:
     cmds:
       - task: parent:directory:k8s:port-forward:setup
       - defer: { task: parent:directory:k8s:port-forward:teardown }
-      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --dryRun=false --platform=k8s &'
-      - sleep 1
+      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --platform=k8s'
+
+  wfsm:start:agent:
+    desc: Starts the agent ACP Workflow Server
+    requires:
+      vars:
+        - TMP_PATH
+        - WFSM_BIN_PATH
+
+    cmds:
+      - task: parent:directory:k8s:port-forward:setup
+      - defer: { task: parent:directory:k8s:port-forward:teardown }
+      - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --platform=k8s --dryRun=false &'
+      - sleep 30
 
 
-
-
-  wfsm:call:acp:
-    desc: Calls the ACP API
+  wfsm:set:acp:env:
+    desc: Gathers the environment variables related to the current ACP Workflow Server deployment
+    requires:
+      vars:
+        - TMP_PATH
     vars:
-      TMP_PATH: '{{ .TMP_PATH | default "/tmp" }}'
-
       AGENT_NAME:
         sh: |
           {{ .TMP_PATH }}/jq 'first(.extensions[]).name' {{ .TMP_PATH }}/manifest.json
@@ -183,22 +214,43 @@ tasks:
           "{{ .TMP_PATH }}/yq" e '.agents[0].image.tag' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
 
     cmds:
-      - cmd: echo "Calling the ACP API"
-      - cmd: echo Agent Name is {{ .AGENT_NAME }}
-      - cmd: echo "AGENT_ID is {{ .AGENT_ID }}"
-      - cmd: echo "API_HOST is {{ .API_HOST }}"
-      - cmd: echo "API_PORT is {{ .API_PORT }}"
-      - cmd: echo "API_KEY is {{ .API_KEY }}"
-      - cmd: echo "AGENT_REPO is {{ .AGENT_REPO }}"
-      - cmd: echo "AGENT_TAG is {{ .AGENT_TAG }}"
+      - echo "export AGENT_NAME={{ .AGENT_NAME }}"
+      - echo "export AGENT_ID={{ .AGENT_ID }}"
+      - echo "export API_HOST={{ .API_HOST }}"
+      - echo "export API_PORT={{ .API_PORT }}"
+      - echo "export API_KEY={{ .API_KEY }}"
+      - echo "export AGENT_REPO={{ .AGENT_REPO }}"
+      - echo "export AGENT_TAG={{ .AGENT_TAG }}"
+
+  wfsm:unset:acp:env:
+    desc: "Unsets the environment variables related to the current ACP Workflow Server deployment. Usage:  eval $(task wfsm:unset:acp:env)"
+    cmds:
+      - echo "unset AGENT_NAME"
+      - echo "unset AGENT_ID"
+      - echo "unset API_HOST"
+      - echo "unset API_PORT"
+      - echo "unset API_KEY"
+      - echo "unset AGENT_REPO"
+      - echo "unset AGENT_TAG"
+
+  wfsm:load:image:
+    desc: Loads the agent image into the kind cluster
+    requires:
+      vars:
+        - KIND_CLUSTER_NAME
+    cmds:
       - |
-        kind load docker-image {{ .AGENT_REPO }}:{{ .AGENT_TAG}} --name {{ .KIND_CLUSTER_NAME }}
-        sleep 90
-        kubectl port-forward svc/echo-agent  {{ .API_PORT }} &
+        eval $(task wfsm:set:acp:env)
+        kind load docker-image "${AGENT_REPO}:${AGENT_TAG}" --name "{{ .KIND_CLUSTER_NAME }}"
+
+  wfsm:call:acp:
+    desc: Calls the ACP API
+    cmds:
+      - |
+        eval $(task wfsm:set:acp:env)
+        kubectl port-forward svc/echo-agent  "${API_PORT}" &
         sleep 3
-        curl -X GET "http://localhost:{{ .API_PORT }}/agents/{{ .AGENT_ID }}" -H "accept: application/json" -H "x-api-key: {{ .API_KEY }}"
-
-
+        curl -X GET "http://localhost:${API_PORT}/agents/${AGENT_ID}" -H "accept: application/json" -H "x-api-key: ${API_KEY}"
 
   wfsm:test:e2e:
     desc: Tests the wfsm deploy command using an agent manifest from the directory
@@ -206,6 +258,8 @@ tasks:
     cmds:
       - task: wfsm:dir:push:manifest
       - task: wfsm:deploy:manifest
+      - task: wfsm:load:image
+      - task: wfsm:start:agent
       - task: wfsm:call:acp
       - defer: { task: wfsm:test:teardown }
 
