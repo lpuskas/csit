@@ -153,6 +153,7 @@ tasks:
     cmds:
       - task: parent:directory:k8s:port-forward:setup
       - defer: { task: parent:directory:k8s:port-forward:teardown }
+      - cmd: sleep 5
       - echo "Pushing the agent manifest to the directory "
       - 'cp -R {{ .MANIFEST_PATH }} "{{ .TMP_PATH}}/manifest.json"'
       - '{{ .DIRCTL_BIN_PATH}}/dirctl push {{ .MANIFEST_PATH}} > "{{ .TMP_PATH}}/digest.json"'
