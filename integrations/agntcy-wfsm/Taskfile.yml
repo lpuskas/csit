@@ -60,7 +60,7 @@ tasks:
         
     cmds:
       - echo "Installing yq ..."
-      - curl -vvv -L -o "{{ .TMP_PATH}}/yq" "https://github.com/mikefarah/yq/releases/download/{{.YQ_VERSION}}/{{ .YQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/yq"
+      - curl -L -o "{{ .TMP_PATH}}/yq" "https://github.com/mikefarah/yq/releases/download/{{.YQ_VERSION}}/{{ .YQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/yq"
 
   wfsm:install:jq:
     desc: Installs the jq tool
@@ -80,7 +80,7 @@ tasks:
 
     cmds:
       - echo "Installing jq"
-      - curl -vvv -L -o "{{ .TMP_PATH}}/jq" "https://github.com/jqlang/jq/releases/download/{{ .JQ_VERSION }}/{{ .JQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/jq"
+      - curl -L -o "{{ .TMP_PATH}}/jq" "https://github.com/jqlang/jq/releases/download/{{ .JQ_VERSION }}/{{ .JQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/jq"
 
 
   wfsm:test:setup:
@@ -151,6 +151,7 @@ tasks:
       - defer: { task: parent:directory:k8s:port-forward:teardown }
       - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --dryRun=false --platform=k8s &'
       - sleep 1
+
 
 
 
