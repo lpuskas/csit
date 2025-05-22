@@ -81,6 +81,21 @@ tasks:
       - echo "Installing jq"
       - curl -L -o "{{ .TMP_PATH}}/jq" "https://github.com/jqlang/jq/releases/download/{{ .JQ_VERSION }}/{{ .JQ_BINARY}}" && chmod +x "{{ .TMP_PATH}}/jq"
 
+  wfsm:install:wfsm-bin:
+    desc: Downloads the wfsm tool binary from GitHub releases
+    requires:
+      vars:
+        - TMP_PATH
+        - ARCH
+        - OS
+    vars:
+       WFSM_BIN_PATH: '{{ .TEMP_PATH | default "/tmp" }}'
+       WFSM_BIN_VERSION: 'v0.2.2'
+    cmds:
+      - |
+        export WFSM_TAG={{.WFSM_BIN_VERSION}}
+        export WFSM_TARGET={{.WFSM_BIN_PATH}};
+        curl -L https://raw.githubusercontent.com/agntcy/workflow-srv-mgr/refs/heads/main/install.sh | bash
 
   wfsm:test:setup:
     desc: Sets up prerequisites for testing the wfsm
