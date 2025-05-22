@@ -197,17 +197,42 @@ jobs:
     needs: [ set-kind-version ]
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      packages: 'read'
+      attestations: 'read'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Setup Environment
         uses: ./.github/actions/setup-env
         with:
           python: true
-          go: true
+          go: false
+
+      - name: Setup K8S Tools
+        uses: ./.github/actions/setup-k8s
+        with:
+          kind-version: ${{ needs.set-kind-version.outputs.kind-version }}
+
+      - name: Deploy Directory
+        uses: ./.github/actions/deploy-components
+        with:
+          deploy-directory: 'true'
+          directory-image-tag: ${{ inputs.override_directory_image_tag}}
+          directory-chart-tag: ${{ inputs.override_directory_chart_tag }}
 
       - name: Run Workflow Server Manger Test
         env:
@@ -215,5 +240,9 @@ jobs:
           AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           TEST_ENV_VAR: "anything"
-        run: task -d integrations/agntcy-wfsm wfsm:test:e2e
+
+        run: |
+          task integrations:directory:download:dirctl-bin
+          task integrations:wfsm:wfsm:test:e2e
+
         shell: bash

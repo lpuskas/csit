@@ -35,17 +35,6 @@ vars:
         printf $WFSM_BIN_PATH
       fi
 
-includes:
-  parent:
-    taskfile: ../Taskfile.yml
-    dir: ..
-    excludes: [ default ]
-    vars:
-      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
-      WFSM_BIN_VERSION: '{{ .WFSM_BIN_VERSION }}'
-      DIRCTL_BIN_PATH: '{{ .DIRCTL_BIN_PATH }}'
-      DIRCTL_BIN_VERSION: '{{ .DIRCTL_BIN_VERSION }}'
-
 tasks:
   wfsm:install:yq:
     desc: Installs the yq tool
@@ -96,12 +85,6 @@ tasks:
   wfsm:test:setup:
     desc: Sets up prerequisites for testing the wfsm
     cmds:
-      - cmd: echo "Setting up wfsm test environment"
-      - cmd: echo "Setting up kind cluster..."
-      - task: parent:kind:create
-      - cmd: echo "Setting up directory..."
-      - task: parent:directory:test-env:deploy
-      - task: parent:directory:download:dirctl-bin
       - task: wfsm:install:wfsm-bin
       - task: wfsm:install:yq
       - task: wfsm:install:jq
@@ -119,25 +102,19 @@ tasks:
       - cmd: rm -rf "{{ .TMP_PATH}}/yq"
       - cmd: rm -rf "{{ .TMP_PATH}}/jq"
       - cmd: rm -rf "{{ .TMP_PATH}}/dirctl"
-      - task: parent:directory:test-env:cleanup
-      - task: parent:directory:k8s:port-forward:teardown
-      - task: parent:kind:destroy
 
-  wfsm:install:wfsm-bin:
-    desc: Downloads the wfsm tool binary from GitHub releases
-    requires:
-      vars:
-        - TMP_PATH
-        - ARCH
-        - OS
-    vars:
-      WFSM_BIN_PATH: '{{ .TEMP_PATH | default "/tmp" }}'
-      WFSM_BIN_VERSION: 'v0.2.2'
+  wfsm:directory:port-forward:setup:
+    internal: true
     cmds:
-      - |
-        export WFSM_TAG={{.WFSM_BIN_VERSION}}
-        export WFSM_TARGET={{.WFSM_BIN_PATH}};
-        curl -L https://raw.githubusercontent.com/agntcy/workflow-srv-mgr/refs/heads/main/install.sh | bash
+      - kubectl port-forward svc/agntcy-dir-apiserver -n {{ .DIRECTORY_NAMESPACE }} 8888 &
+      - sleep 1
+
+  wfsm:port-forward:teardown:
+    internal: true
+    cmds:
+      - kill -9 $(ps aux | grep port-forward | grep agntcy-dir-apiserver | awk '{print $2}') || true
+
+
 
   wfsm:dir:push:manifest:
     desc: "Pushes the agent manifest to the directory"
@@ -151,8 +128,8 @@ tasks:
       MANIFEST_PATH: '{{ .MANIFEST_PATH | default "./assets/echo_agent.json" }}'
 
     cmds:
-      - task: parent:directory:k8s:port-forward:setup
-      - defer: { task: parent:directory:k8s:port-forward:teardown }
+      - task: wfsm:directory:port-forward:setup
+      - defer: { task: wfsm:port-forward:teardown }
       - cmd: sleep 10
       - echo "Pushing the agent manifest to the directory "
       - 'cp -R {{ .MANIFEST_PATH }} "{{ .TMP_PATH}}/manifest.json"'
@@ -168,8 +145,8 @@ tasks:
       AZURE_OPENAI_API_VERSION: '{{ .AZURE_OPENAI_API_VERSION | default "2025-02-01-preview" }}'
 
     cmds:
-      - task: parent:directory:k8s:port-forward:setup
-      - defer: { task: parent:directory:k8s:port-forward:teardown }
+      - task: wfsm:directory:port-forward:setup
+      - defer: { task: wfsm:port-forward:teardown }
       - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --platform=k8s'
 
   wfsm:start:agent:
@@ -181,8 +158,8 @@ tasks:
 
     cmds:
       - echo "Starting the agent ..."
-      - task: parent:directory:k8s:port-forward:setup
-      - defer: { task: parent:directory:k8s:port-forward:teardown }
+      - task: wfsm:directory:port-forward:setup
+      - defer: { task: wfsm:port-forward:teardown }
       - '"{{ .TMP_PATH}}/wfsm" deploy --manifestPath="$(<{{ .TMP_PATH}}/digest.json)" --platform=k8s --dryRun=false &'
       - sleep 30
 
