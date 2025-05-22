@@ -10,7 +10,7 @@ includes:
   gateway:
     taskfile: ./agntcy-agp/Taskfile.yml
     dir: ./agntcy-agp
-    excludes: [default]
+    excludes: [ default ]
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
       GATEWAY_IMAGE_TAG: '{{ .GATEWAY_IMAGE_TAG }}'
@@ -20,7 +20,7 @@ includes:
   directory:
     taskfile: ./agntcy-dir/Taskfile.yml
     dir: ./agntcy-dir
-    excludes: [default]
+    excludes: [ default ]
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
       DIRECTORY_IMAGE_TAG: '{{ .DIRECTORY_IMAGE_TAG }}'
@@ -30,7 +30,14 @@ includes:
   apps:
     taskfile: ./agntcy-apps/Taskfile.yml
     dir: ./agntcy-apps
-    excludes: [default]
+    excludes: [ default ]
+    vars:
+      WFSM_BIN_VERSION: '{{ .WFSM_BIN_VERSION }}'
+
+  wfsm:
+    taskfile: ./agntcy-wfsm/Taskfile.yml
+    dir: ./agntcy-wfsm
+    excludes: [ default ]
     vars:
       WFSM_BIN_VERSION: '{{ .WFSM_BIN_VERSION }}'
 
