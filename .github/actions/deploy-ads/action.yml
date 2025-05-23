@@ -1,0 +1,192 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+---
+name: Deploy agntcy ADS components
+description: Deploy agntcy ADS components
+inputs:
+  directory-image-tag:
+    description: 'Set gateway container image version'
+    required: false
+    default: 'v0.2.5'
+  directory-chart-tag:
+    description: 'Set gateway chart version'
+    required: false
+    default: 'v0.2.5'
+  kind-cluster-name:
+    description: 'Set kind cluster name where components are deployed'
+    required: false
+    default: 'agntcy-test'
+  kind-cluster-namespace:
+    description: 'Set cluster namespace where components are deployed'
+    required: false
+    default: 'default'
+  deploy-dir-network:
+    description: 'Deploy directory network'
+    required: false
+    default: 'false'
+  dirctl-bin-version:
+    description: 'Version of dirctl binary'
+    required: false
+    default: 'v0.2.1'
+  network-namespace-prefix:
+    description: 'Set cluster namespace where directory network are deployed'
+    required: false
+    default: 'network'
+  network-size:
+    description: 'Number of directory network peers'
+    required: false
+    default: '3'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create Kind Cluster
+      uses: helm/kind-action@v1
+      with:
+        cluster_name: ${{ inputs.kind-cluster-name }}
+        wait: 300s
+
+    - name: deploy agntcy ADS
+      shell: bash
+      env:
+        DIRECTORY_IMAGE_TAG: ${{ inputs.directory-image-tag }}
+        DIRECTORY_CHART_TAG: ${{ inputs.directory-chart-tag }}
+        KIND_CLUSTER_NAME: ${{ inputs.kind-cluster-name }}
+        KIND_CLUSTER_NAMESPACE: ${{ inputs.kind-cluster-namespace }}
+      run: |
+        kubectl config use-context kind-$KIND_CLUSTER_NAME
+        helm upgrade agntcy-ads oci://ghcr.io/agntcy/dir/helm-charts/dir \
+          --version $DIRECTORY_CHART_TAG \
+          --set image.tag="${DIRECTORY_IMAGE_TAG}" \
+          --namespace $KIND_CLUSTER_NAMESPACE \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+
+    - name: Set OS and Architecture variables
+      if: ${{ inputs.deploy-dir-network == 'true' }}
+      id: os_arch
+      shell: bash
+      run: |
+        # Convert OS
+        case "${{ runner.os }}" in
+          Linux) echo "os=linux" >> $GITHUB_OUTPUT ;;
+          Windows) echo "os=windows" >> $GITHUB_OUTPUT ;;
+          macOS) echo "os=darwin" >> $GITHUB_OUTPUT ;;
+        esac
+
+        # Convert Architecture
+        case "${{ runner.arch }}" in
+          X64) echo "arch=amd64" >> $GITHUB_OUTPUT ;;
+          ARM64) echo "arch=arm64" >> $GITHUB_OUTPUT ;;
+        esac
+
+    - name: deploy agntcy ADS network bootstrap node
+      if: ${{ inputs.deploy-dir-network == 'true' }}
+      id: boostrap-node
+      shell: bash
+      env:
+        DIRECTORY_LOGGER_LOG_LEVEL: ERROR
+        DIRECTORY_IMAGE_TAG: ${{ inputs.directory-image-tag }}
+        DIRECTORY_CHART_TAG: ${{ inputs.directory-chart-tag }}
+        KIND_CLUSTER_NAME: ${{ inputs.kind-cluster-name }}
+        NETWORK_NAMESPACE_PREFIX: ${{ inputs.network-namespace-prefix }}
+        DIRCTL_BIN_VERSION: ${{ inputs.dirctl-bin-version }}
+        GH_TOKEN: ${{ github.token }}
+        ARCH: ${{ steps.os_arch.outputs.arch }}
+        OS: ${{ steps.os_arch.outputs.os }}
+      run: |
+        kubectl config use-context kind-$KIND_CLUSTER_NAME
+        cat <<EOF > /tmp/bootstrap.yaml
+          apiserver:
+            config:
+              # Routing settings for the peer-to-peer network.
+              routing:
+                # Address to use for routing
+                listen_address: '/ip4/0.0.0.0/tcp/8999'
+
+                # Path to private key file for peer ID.
+                key_path: /etc/agntcy/dir/node.privkey
+
+                # Nodes to use for bootstrapping of the DHT.
+                # We read initial routing tables here and get introduced
+                # to the network.
+                bootstrap_peers: []
+        EOF
+        echo "downloading dirctl-${OS}-${ARCH} ..."
+        gh release download ${DIRCTL_BIN_VERSION} --repo agntcy/dir --pattern "dirctl-${OS}-${ARCH}" --skip-existing --output /tmp/dirctl
+        chmod +x /tmp/dirctl
+        test -f /tmp/node.privkey || openssl genpkey -algorithm ED25519 -out /tmp/node.privkey
+        bootstrap_peerid=$(/tmp/dirctl network info /tmp/node.privkey)
+        echo "PEER ID: ${bootstrap_peerid}"
+        echo BOOTSTRAP_PEER_ID="${bootstrap_peerid}" >> $GITHUB_OUTPUT
+        helm upgrade agntcy-dir \
+          oci://ghcr.io/agntcy/dir/helm-charts/dir \
+          --version $DIRECTORY_CHART_TAG \
+          --set apiserver.image.tag="${DIRECTORY_IMAGE_TAG}" \
+          --set apiserver.privKey="$(cat /tmp/node.privkey)" \
+          --set apiserver.config.oci.registry_address="agntcy-dir-zot:5000" \
+          -f /tmp/bootstrap.yaml \
+          --namespace "${NETWORK_NAMESPACE_PREFIX}-bootstrap" \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+    - name: deploy agntcy ADS network nodes
+      if: ${{ inputs.deploy-dir-network == 'true' }}
+      shell: bash
+      env:
+        BOOSTRAP_PEER_ID: ${{ steps.boostrap-node.outputs.BOOTSTRAP_PEER_ID }}
+        DIRECTORY_LOGGER_LOG_LEVEL: ERROR
+        DIRECTORY_IMAGE_TAG: ${{ inputs.directory-image-tag }}
+        DIRECTORY_CHART_TAG: ${{ inputs.directory-chart-tag }}
+        KIND_CLUSTER_NAME: ${{ inputs.kind-cluster-name }}
+        NETWORK_NAMESPACE_PREFIX: ${{ inputs.network-namespace-prefix }}
+        NETWORK_SIZE: ${{ inputs.network-size }}
+      run: |
+        kubectl config use-context kind-$KIND_CLUSTER_NAME
+        for i in $(seq 1 $NETWORK_SIZE)
+        do
+          helm upgrade agntcy-dir \
+          oci://ghcr.io/agntcy/dir/helm-charts/dir \
+            --version $DIRECTORY_CHART_TAG \
+            --set apiserver.image.tag="${DIRECTORY_IMAGE_TAG}" \
+            --set apiserver.config.routing.bootstrap_peers[0]="/dns4/agntcy-dir-apiserver-routing.${NETWORK_NAMESPACE_PREFIX}-bootstrap.svc.cluster.local/tcp/8999/p2p/${BOOSTRAP_PEER_ID}" \
+            --set apiserver.config.oci.registry_address="agntcy-dir-zot:5000" \
+            --namespace "${NETWORK_NAMESPACE_PREFIX}-peer${i}" \
+            --create-namespace \
+            --install \
+            --wait \
+            --wait-for-jobs \
+            --timeout "15m"
+        done
+
+    - name: list deployed ADS components
+      shell: bash
+      env:
+        KIND_CLUSTER_NAME: ${{ inputs.kind-cluster-name }}
+        KIND_CLUSTER_NAMESPACE: ${{ inputs.kind-cluster-namespace }}
+      run: |
+        kubectl config use-context kind-$KIND_CLUSTER_NAME
+        kubectl get pods -n $KIND_CLUSTER_NAMESPACE
+
+    - name: list deployed ADS components
+      if: ${{ inputs.deploy-dir-network == 'true' }}
+      shell: bash
+      env:
+        KIND_CLUSTER_NAME: ${{ inputs.kind-cluster-name }}
+        NETWORK_NAMESPACE_PREFIX: ${{ inputs.network-namespace-prefix }}
+        NETWORK_SIZE: ${{ inputs.network-size }}
+      run: |
+        kubectl config use-context kind-$KIND_CLUSTER_NAME
+        kubectl get pods -n ${NETWORK_NAMESPACE_PREFIX}-bootstrap
+        for i in $(seq 1 $NETWORK_SIZE)
+        do
+          kubectl get pods -n ${NETWORK_NAMESPACE_PREFIX}-peer$i
+        done
