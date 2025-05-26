@@ -187,7 +187,7 @@ tasks:
     vars:
       AGENT_NAME:
         sh: |
-          {{ .TMP_PATH }}/jq 'first(.extensions[]).name' {{ .TMP_PATH }}/manifest.json
+          {{ .TMP_PATH }}/jq '.name' {{ .TMP_PATH }}/manifest.json
       AGENT_ID:
         sh: |
           "{{ .TMP_PATH }}/yq" e '.agents[0].env[] | select(.name=="AGENT_ID").value' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
