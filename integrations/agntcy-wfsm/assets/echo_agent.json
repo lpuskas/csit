@@ -158,7 +158,7 @@
                         {
                             "type": "source_code",
                             "name": "source_code_local",
-                            "url": "..",
+                            "url": "github.com/agntcy/acp-sdk.git//examples/echo-agent",
                             "framework_config": {
                                 "framework_type": "langgraph",
                                 "graph": "echo_agent.langgraph:AGENT_GRAPH"
