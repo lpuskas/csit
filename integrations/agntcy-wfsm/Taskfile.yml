@@ -243,7 +243,7 @@ tasks:
       - echo "Calling the ACP API to get the agent details"
       - |
         eval $(task wfsm:set:acp:env)
-        kubectl port-forward svc/"${AGENT_NAME}"  "${API_PORT}" &
+        kubectl port-forward svc/org-agntcy-echo-agent "${API_PORT}" &
         sleep 3
         curl -X GET "http://localhost:${API_PORT}/agents/${AGENT_ID}" -H "accept: application/json" -H "x-api-key: ${API_KEY}"
 
