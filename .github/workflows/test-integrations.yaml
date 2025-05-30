@@ -231,8 +231,8 @@ jobs:
         uses: ./.github/actions/deploy-components
         with:
           deploy-directory: 'true'
-          directory-image-tag: ${{ inputs.override_directory_image_tag}}
-          directory-chart-tag: ${{ inputs.override_directory_chart_tag }}
+          directory-image-tag: 'v0.2.3'
+          directory-chart-tag: 'v0.2.3'
 
       - name: Run Workflow Server Manger Test
         env:
@@ -240,6 +240,7 @@ jobs:
           AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           TEST_ENV_VAR: "anything"
+          DIRCTL_BIN_VERSION: 'v0.2.3'
 
         run: |
           task integrations:directory:download:dirctl-bin

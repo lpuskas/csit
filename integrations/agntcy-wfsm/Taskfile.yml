@@ -90,7 +90,7 @@ tasks:
         - OS
     vars:
        WFSM_BIN_PATH: '{{ .TEMP_PATH | default "/tmp" }}'
-       WFSM_BIN_VERSION: 'v0.2.2'
+       WFSM_BIN_VERSION: 'v0.3.1'
     cmds:
       - |
         export WFSM_TAG={{.WFSM_BIN_VERSION}}
@@ -187,7 +187,7 @@ tasks:
     vars:
       AGENT_NAME:
         sh: |
-          {{ .TMP_PATH }}/jq 'first(.extensions[]).name' {{ .TMP_PATH }}/manifest.json
+          {{ .TMP_PATH }}/jq '.name' {{ .TMP_PATH }}/manifest.json
       AGENT_ID:
         sh: |
           "{{ .TMP_PATH }}/yq" e '.agents[0].env[] | select(.name=="AGENT_ID").value' "{{ .HOME }}/.wfsm/{{ .AGENT_NAME}}/values-{{ .AGENT_NAME}}.yaml"
@@ -243,7 +243,7 @@ tasks:
       - echo "Calling the ACP API to get the agent details"
       - |
         eval $(task wfsm:set:acp:env)
-        kubectl port-forward svc/echo-agent  "${API_PORT}" &
+        kubectl port-forward svc/org-agntcy-echo-agent "${API_PORT}" &
         sleep 3
         curl -X GET "http://localhost:${API_PORT}/agents/${AGENT_ID}" -H "accept: application/json" -H "x-api-key: ${API_KEY}"
 
