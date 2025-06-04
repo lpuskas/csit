@@ -15,15 +15,15 @@
 ## Architecture
 
 Agncty CSIT system design needs to meet continuously expanding requirements of
-Agntcy projects including Agent Gateway Protocol, Agent Directory and many more.
+Agntcy projects including Slim Protocol, Agent Directory and many more.
 
 The directory structure of the CSIT:
 
 ```
 csit
 ├── benchmarks                                    # Benchmark tests
-│   ├── agntcy-agp                                # Benchmark tests for AGP
-│   │   ├── Taskfile.yml                          # Tasks for AGP benchmark tests
+│   ├── agntcy-slim                                # Benchmark tests for Slim
+│   │   ├── Taskfile.yml                          # Tasks for Slim benchmark tests
 │   │   └── tests
 │   ├── agntcy-dir                                # Benchmark tests for ADS
 │   │   ├── Taskfile.yml                          # Tasks for ADS benchmark tests
@@ -32,9 +32,9 @@ csit
 │   ├── go.sum
 │   └── Taskfile.yml
 ├── integrations                                  # Integration tests
-│   ├── agntcy-agp                                # Integration tests for [agntcy/agp](https://github.com/agntcy/agp)
+│   ├── agntcy-slim                                # Integration tests for [agntcy/slim](https://github.com/agntcy/slim)
 │   │   ├── agentic-apps
-│   │   ├── Taskfile.yml                          # Tasks for AGP integration tests
+│   │   ├── Taskfile.yml                          # Tasks for Slim integration tests
 │   │   └── tests
 │   ├── agntcy-apps                               # Integration tests for ([agntcy/agentic-apps](https://github.com/agntcy/agentic-apps))
 │   │   ├── agentic-apps
@@ -81,7 +81,7 @@ The following tasks are defined:
 ```bash
 task: Available tasks for this project:
 * benchmarks:directory:test:                              All ADS benchmark test
-* benchmarks:gateway:test:                                All AGP benchmark test
+* benchmarks:slim:test:                                All Slim benchmark test
 * integrations:apps:download:wfsm-bin:                    Get wfsm binary from GitHub
 * integrations:apps:get-marketing-campaign-cfgs:          Populate marketing campaign config file
 * integrations:apps:init-submodules:                      Initialize submodules
@@ -99,13 +99,13 @@ task: Available tasks for this project:
 * integrations:directory:test:list:                       Directory agent list test
 * integrations:directory:test:networking:                 Directory agent networking test
 * integrations:directory:test:push:                       Directory agent push test
-* integrations:gateway:build:agentic-apps:                Build agentic containers
-* integrations:gateway:test-env:cleanup:                  Remove agent gateway test env
-* integrations:gateway:test-env:deploy:                   Deploy agntcy gateway test env
-* integrations:gateway:test:mcp-server:                   Test MCP over AGP
-* integrations:gateway:test:mcp-server:agp-native:        Test AGP native MCP server
-* integrations:gateway:test:mcp-server:mcp-proxy:         Test MCP server via MCP proxy
-* integrations:gateway:test:sanity:                       Sanity gateway test
+* integrations:slim:build:agentic-apps:                Build agentic containers
+* integrations:slim:test-env:cleanup:                  Remove agent slim test env
+* integrations:slim:test-env:deploy:                   Deploy agntcy slim test env
+* integrations:slim:test:mcp-server:                   Test MCP over Slim
+* integrations:slim:test:mcp-server:slim-native:       Test Slim native MCP server
+* integrations:slim:test:mcp-server:mcp-proxy:         Test MCP server via MCP proxy
+* integrations:slim:test:sanity:                       Sanity slim test
 * integrations:kind:create:                               Create kind cluster
 * integrations:kind:destroy:                              Destroy kind cluster
 * integrations:version:                                   Get version
@@ -133,9 +133,9 @@ Inside csit integrations directory contains the tasks that creating the test
 environment, deploying the components that will be tested, and running the tests.
 
 ```
-├── agntcy-agp                                # Integration tests for [agntcy/agp](https://github.com/agntcy/agp)
+├── agntcy-slim                                # Integration tests for [agntcy/slim](https://github.com/agntcy/slim)
 │   ├── agentic-apps
-│   ├── Taskfile.yml                          # Tasks for AGP integration tests
+│   ├── Taskfile.yml                          # Tasks for Slim integration tests
 │   └── tests
 ├── agntcy-apps                               # Integration tests for ([agntcy/agentic-apps](https://github.com/agntcy/agentic-apps))
 │   ├── agentic-apps

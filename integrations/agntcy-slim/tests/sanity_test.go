@@ -16,7 +16,7 @@ import (
 	"github.com/agntcy/csit/integrations/testutils/k8shelper"
 )
 
-var _ = ginkgo.Describe("Agntcy gateway sanity test", func() {
+var _ = ginkgo.Describe("Agntcy slim sanity test", func() {
 	var (
 		langchainImage         string
 		autogenImage           string
@@ -43,7 +43,7 @@ var _ = ginkgo.Describe("Agntcy gateway sanity test", func() {
 		namespace = os.Getenv("NAMESPACE")
 	})
 
-	ginkgo.Context("AGP sanity test", ginkgo.Ordered, func() {
+	ginkgo.Context("Slim sanity test", ginkgo.Ordered, func() {
 		ginkgo.BeforeAll(func() {
 			podName := "autogen-agent"
 			k8sHelper := k8shelper.NewK8sHelper(podName, namespace, autogenImage, clientset)
@@ -53,8 +53,8 @@ var _ = ginkgo.Describe("Agntcy gateway sanity test", func() {
 				"AZURE_OPENAI_API_KEY":  azure_openapi_api_key,
 			}).WithCommand([]string{"python"}).WithArgs([]string{
 				"autogen_agent.py",
-				"-g",
-				"http://agntcy-agp:46357",
+				"-s",
+				"http://agntcy-slim:46357",
 			}).CreatePod()
 
 			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "failed to create MCP time server pod")
@@ -81,8 +81,8 @@ var _ = ginkgo.Describe("Agntcy gateway sanity test", func() {
 				"langchain_agent.py",
 				"-m",
 				"Budapest",
-				"-g",
-				"http://agntcy-agp:46357",
+				"-s",
+				"http://agntcy-slim:46357",
 			}).CreateJob()
 
 			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "failed to create Llamaindext time agent job")

@@ -7,14 +7,14 @@ version: '3'
 silent: true
 
 includes:
-  gateway:
-    taskfile: ./agntcy-agp/Taskfile.yml
-    dir: ./agntcy-agp
+  slim:
+    taskfile: ./agntcy-slim/Taskfile.yml
+    dir: ./agntcy-slim
     excludes: [ default ]
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
-      GATEWAY_IMAGE_TAG: '{{ .GATEWAY_IMAGE_TAG }}'
-      GATEWAY_CHART_TAG: '{{ .GATEWAY_CHART_TAG }}'
+      SLIM_IMAGE_TAG: '{{ .SLIM_IMAGE_TAG }}'
+      SLIM_CHART_TAG: '{{ .SLIM_CHART_TAG }}'
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE }}'
 
   directory:
