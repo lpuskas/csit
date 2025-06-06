@@ -13,7 +13,8 @@ vars:
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
   SLIM_IMAGE_TAG: '{{ .SLIM_IMAGE_TAG | default "0.3.15" }}'
   MCP_PROXY_IMAGE_TAG: '{{ .MCP_PROXY_IMAGE_TAG | default "0.1.5" }}'
-  SLIM_CHART_TAG: '{{ .SLIM_CHART_TAG | default "v0.1.5" }}'
+  SLIM_CHART_TAG: '{{ .SLIM_CHART_TAG | default "v0.1.7" }}'
+  SLIM_CONFIG: '{{ .SLIM_CONFIG | default "base" }}'
 
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "--set *.platform=linux/arm64" }}'
   LANGCHAIN_APP_TAG: '{{ .LANGCHAIN_APP_TAG | default "v0.0.10" }}'
@@ -53,6 +54,7 @@ tasks:
           --set slim.image.tag="{{ .SLIM_IMAGE_TAG }}" \
           --set mcpProxy.image.tag="{{ .MCP_PROXY_IMAGE_TAG }}" \
           --set mcpProxy.enabled="{{ .MCP_PROXY_DEPLOY }}" \
+          -f components/config/{{ .SLIM_CONFIG }}/server-config.yaml \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -63,8 +65,32 @@ tasks:
   test-env:cleanup:
     desc: Remove agent slim test env
     cmds:
+      - helm delete --namespace {{ .HELM_NAMESPACE }} agntcy-slim
+
+  cert-manager:deploy:
+    desc: Deploy cert-manager
+    cmds:
       - |
-        helm delete --namespace {{ .HELM_NAMESPACE }} agntcy-slim
+        helm repo add jetstack https://charts.jetstack.io --force-update
+        helm upgrade cert-manager jetstack/cert-manager \
+          --namespace cert-manager \
+          --create-namespace \
+          --version v1.17.2 \
+          --set crds.enabled=true \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+  cert-manager:remove:
+    desc: Remove cert-manager
+    cmds:
+      - helm delete cert-manger -n cert-manger
+
+  certificates:create:
+    desc: Create certificates
+    cmds:
+      - kubectl apply -f components/certificates
 
   build:agentic-apps:
     desc: Build agentic containers
